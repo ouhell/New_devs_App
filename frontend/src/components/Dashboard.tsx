@@ -1,21 +1,34 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { RevenueSummary } from "./RevenueSummary";
+import { SecureAPI } from "../lib/secureApi";
 
-const PROPERTIES = [
-  { id: 'prop-001', name: 'Beach House Alpha' },
-  { id: 'prop-002', name: 'City Apartment Downtown' },
-  { id: 'prop-003', name: 'Country Villa Estate' },
-  { id: 'prop-004', name: 'Lakeside Cottage' },
-  { id: 'prop-005', name: 'Urban Loft Modern' }
-];
+interface Property {
+  id: string;
+  name: string;
+  timezone: string;
+}
 
 const Dashboard: React.FC = () => {
-  const [selectedProperty, setSelectedProperty] = useState('prop-001');
+  const [selectedProperty, setSelectedProperty] = useState('');
+
+  const { data: properties = [], isLoading: loadingProperties } = useQuery<Property[]>({
+    queryKey: ['tenant-properties'],
+    queryFn: () => SecureAPI.getTenantProperties(),
+    staleTime: 5 * 60 * 1000, // 5 min
+  });
+
+  // Auto-select first property once loaded
+  useEffect(() => {
+    if (properties.length > 0 && !selectedProperty) {
+      setSelectedProperty(properties[0].id);
+    }
+  }, [properties, selectedProperty]);
 
   return (
     <div className="p-4 lg:p-6 min-h-full">
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-2xl font-bold mb-6 text-gray-900">Property Management Dashboard</h1>
+        <h1 className="text-2xl font-bold mb-6 text-gray-900">Property Management Dashboards</h1>
 
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 lg:p-6">
           <div className="mb-6">
@@ -33,20 +46,25 @@ const Dashboard: React.FC = () => {
                 <select
                   value={selectedProperty}
                   onChange={(e) => setSelectedProperty(e.target.value)}
-                  className="block w-full sm:w-auto min-w-[200px] px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
+                  disabled={loadingProperties}
+                  className="block w-full sm:w-auto min-w-[200px] px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm disabled:opacity-50"
                 >
-                  {PROPERTIES.map((property) => (
-                    <option key={property.id} value={property.id}>
-                      {property.name}
-                    </option>
-                  ))}
+                  {loadingProperties ? (
+                    <option>Loading...</option>
+                  ) : (
+                    properties.map((property) => (
+                      <option key={`${property.id}-${property.name}`} value={property.id}>
+                        {property.name}
+                      </option>
+                    ))
+                  )}
                 </select>
               </div>
             </div>
           </div>
 
           <div className="space-y-6">
-            <RevenueSummary propertyId={selectedProperty} />
+            {selectedProperty && <RevenueSummary propertyId={selectedProperty} />}
           </div>
         </div>
       </div>

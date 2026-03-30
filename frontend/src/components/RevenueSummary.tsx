@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { SecureAPI } from '../lib/secureApi';
 
 interface RevenueData {
@@ -10,38 +11,18 @@ interface RevenueData {
 
 interface RevenueSummaryProps {
     propertyId?: string;
-    debugTenant?: string; 
+    debugTenant?: string;
     showRaw?: boolean;
 }
 
 export const RevenueSummary: React.FC<RevenueSummaryProps> = ({ propertyId = 'prop-001', debugTenant, showRaw }) => {
-    const [data, setData] = useState<RevenueData | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState('');
-
     const activeTenant = debugTenant || 'candidate';
 
-    useEffect(() => {
-        const fetchRevenue = async () => {
-            setLoading(true);
-            try {
-                // Use SecureAPI to handle authentication automatically
-                // We pass the simulatedTenant option which SecureAPI will attach as a header
-                const response = await SecureAPI.getDashboardSummary(propertyId, {
-                    simulatedTenant: activeTenant,
-                    timestamp: Date.now()
-                });
-                setData(response);
-            } catch (err) {
-                setError('Failed to load revenue data');
-                console.error(err);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchRevenue();
-    }, [propertyId, activeTenant]);
+    const { data, isLoading: loading, error } = useQuery<RevenueData>({
+        queryKey: ['revenue-summary', propertyId, activeTenant],
+        queryFn: () => SecureAPI.getDashboardSummary(propertyId, { simulatedTenant: activeTenant }),
+        staleTime: 5 * 60 * 1000, // 5 min
+    });
 
     if (loading) {
         return (
@@ -58,7 +39,7 @@ export const RevenueSummary: React.FC<RevenueSummaryProps> = ({ propertyId = 'pr
         );
     }
 
-    if (error) return <div className="p-4 text-red-500 bg-red-50 rounded-lg">{error}</div>;
+    if (error) return <div className="p-4 text-red-500 bg-red-50 rounded-lg">Failed to load revenue data</div>;
     if (!data) return null;
 
     const displayTotal = Math.round(data.total_revenue * 100) / 100;
