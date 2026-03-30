@@ -171,7 +171,7 @@ const ProfilePage: React.FC = () => {
   const handleAvatarUpdate = (url: string | null) => {
     setProfileData(prev => prev ? {
       ...prev,
-      profile: { ...prev.profile, avatar_url: url }
+      profile: { ...prev.profile, avatar_url: url ?? undefined }
     } : null);
   };
 
